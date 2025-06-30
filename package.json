@@ -1,7 +1,7 @@
 {
   "name": "teleprompter",
   "version": "1.2.2",
-  "description": "Browser-based TelePrompter with Remote Control",
+  "description": "Browser-based TelePrompter",
   "homepage": "https://github.com/manifestinteractive/teleprompter",
   "license": "MIT",
   "keywords": [
@@ -26,15 +26,8 @@
     "url": "https://github.com/manifestinteractive/teleprompter/issues"
   },
   "scripts": {
-    "start": "forever start -w --minUptime 1000 --spinSleepTime 1000 -m 1 -l server.log --append -o ./server-stdout.log -e ./server-stderr.log server.js",
-    "stop": "forever stop -w --minUptime 1000 --spinSleepTime 1000 -m 1 -l server.log --append -o ./server-stdout.log -e ./server-stderr.log server.js",
-    "client": "http-server --cors -p 8080 -o",
-    "server": "node server.js"
-  },
-  "dependencies": {
-    "express": "^4.18.2",
-    "forever": "^4.0.0",
-    "socket.io": "^4.5.4"
+    "start": "http-server --cors -p 8080 -o",
+    "client": "http-server --cors -p 8080 -o"
   },
   "devDependencies": {
     "http-server": "^0.12.3"

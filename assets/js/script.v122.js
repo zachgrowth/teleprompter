@@ -1,5 +1,5 @@
 /**
- * TelePrompter v1.2.2 - Browser-based TelePrompter with Remote Control
+ * TelePrompter v1.2.2 - Browser-based TelePrompter
  * (c) 2023 Peter Schmalfeldt
  * License: https://github.com/manifestinteractive/teleprompter/blob/master/LICENSE
  */
@@ -14,13 +14,9 @@ var TelePrompter = (function() {
   var $elm = {};
 
   /* App Settings */
-  var emitTimeout,
-    debug = false,
+  var debug = false,
     initialized = false,
     isPlaying = false,
-    remote,
-    scrollDelay,
-    socket,
     modalOpen = false,
     timeout,
     timer,
@@ -62,7 +58,6 @@ var TelePrompter = (function() {
     $elm.buttonFlipX = $('.button.flip-x');
     $elm.buttonFlipY = $('.button.flip-y');
     $elm.buttonPlay = $('.button.play');
-    $elm.buttonRemote = $('.button.remote');
     $elm.buttonReset = $('.button.reset');
     $elm.closeModal = $('.close-modal');
     $elm.fontSize = $('.font_size');
@@ -72,11 +67,8 @@ var TelePrompter = (function() {
     $elm.headerContent = $('header h1, header nav');
     $elm.markerOverlay = $('.marker, .overlay');
     $elm.modal = $('#modal');
-    $elm.remoteID = $('.remote-id');
-    $elm.remoteURL = $('.remote-url');
-    $elm.remoteControlModal = $('#remote-control-modal');
-    $elm.speed = $('.speed');
     $elm.softwareUpdate = $('#software-update');
+    $elm.speed = $('.speed');
     $elm.teleprompter = $('#teleprompter');
     $elm.textColor = $('#text-color');
     $elm.window = $(window);
@@ -87,7 +79,6 @@ var TelePrompter = (function() {
     $elm.buttonFlipX.on('click.teleprompter', handleFlipX);
     $elm.buttonFlipY.on('click.teleprompter', handleFlipY);
     $elm.buttonPlay.on('click.teleprompter', handlePlay);
-    $elm.buttonRemote.on('click.teleprompter', handleRemote);
     $elm.buttonReset.on('click.teleprompter', handleReset);
     $elm.closeModal.on('click.teleprompter', handleCloseModal);
     $elm.gaInput.on('change.teleprompter', gaInput);
@@ -113,7 +104,6 @@ var TelePrompter = (function() {
 
       // Open Software Update Modal
       $elm.modal.css('display', 'flex');
-      $elm.remoteControlModal.hide();
       $elm.softwareUpdate.show();
 
       modalOpen = true;
@@ -136,7 +126,6 @@ var TelePrompter = (function() {
     bindEvents();
     initSettings();
     initUI();
-    initRemote();
     checkForUpdate();
 
     // Track that we've started TelePrompter
@@ -145,28 +134,6 @@ var TelePrompter = (function() {
     if (debug) {
       console.log('[TP]', 'TelePrompter Initialized');
     }
-  }
-
-  /**
-   * Initialize Remote
-   */
-  function initRemote() {
-    // Connect to Remote if Provided
-    var currentRemote = localStorage.getItem('teleprompter_remote_id');
-    if (currentRemote && currentRemote.length === 6) {
-      // Wait a second for socket to load
-      setTimeout(function(){
-        remoteConnect(currentRemote);
-      }, 1000);
-    }
-
-    if (debug) {
-      console.log('[TP]', 'Remote Initialized', currentRemote ? '( Remote ID: ' + currentRemote + ' )' : '( No Remote )');
-    }
-
-    clearTimeout(timerGA);
-    timerGA = setTimeout(function(){}, timerExp);
-    gaEvent('TP', 'Remote Initialized', currentRemote ? currentRemote : 'No Remote');
   }
 
   /**
@@ -317,9 +284,7 @@ var TelePrompter = (function() {
     timer = $('.clock').timer({
       stopVal: 10000,
       onChange: function(time) {
-        if (socket && remote) {
-          socket.emit('clientCommand', 'updateTime', time);
-        }
+        // Timer functionality without remote
       }
     });
 
@@ -517,13 +482,6 @@ var TelePrompter = (function() {
     $elm.body.css('background-color', config.backgroundColor);
     localStorage.setItem('teleprompter_background_color', config.backgroundColor);
 
-    if (socket && remote) {
-      clearTimeout(emitTimeout);
-      emitTimeout = setTimeout(function(){
-        socket.emit('clientCommand', 'updateConfig', config);
-      }, timerExp);
-    }
-
     if (debug) {
       console.log('[TP]', 'Background Color Changed:', config.backgroundColor);
     }
@@ -542,13 +500,7 @@ var TelePrompter = (function() {
    * Handle Closing Modal
    */
   function handleCloseModal() {
-    // Reset Focus on Remote Button if needed
-    if ($elm.remoteControlModal.is(':visible')) {
-      $elm.buttonRemote.focus();
-    }
-
     $elm.modal.hide();
-    $elm.remoteControlModal.hide();
     $elm.softwareUpdate.hide();
 
     modalOpen = false;
@@ -557,9 +509,8 @@ var TelePrompter = (function() {
   /**
    * Handle Dimming Layovers
    * @param {Object} evt
-   * @param {Boolean} skipUpdate
    */
-  function handleDim(evt, skipUpdate) {
+  function handleDim(evt) {
     if (config.dimControls) {
       config.dimControls = false;
       $elm.buttonDimControls.removeClass('icon-eye-close').addClass('icon-eye-open');
@@ -576,13 +527,6 @@ var TelePrompter = (function() {
     }
 
     localStorage.setItem('teleprompter_dim_controls', config.dimControls);
-
-    if (socket && remote && !skipUpdate) {
-      clearTimeout(emitTimeout);
-      emitTimeout = setTimeout(function(){
-        socket.emit('clientCommand', 'updateConfig', config);
-      }, timerExp);
-    }
 
     if (debug) {
       console.log('[TP]', 'Dim Control Changed:', config.dimControls);
@@ -601,14 +545,9 @@ var TelePrompter = (function() {
   /**
    * Handle Flipping Text Horizontally
    * @param {Object} evt
-   * @param {Boolean} skipUpdate
    */
-  function handleFlipX(evt, skipUpdate) {
+  function handleFlipX(evt) {
     timer.resetTimer();
-
-    if (socket && remote) {
-      socket.emit('clientCommand', 'updateTime', '00:00:00');
-    }
 
     // Remove Flip Classes
     $elm.teleprompter.removeClass('flip-x').removeClass('flip-xy');
@@ -631,13 +570,6 @@ var TelePrompter = (function() {
 
     localStorage.setItem('teleprompter_flip_x', config.flipX);
 
-    if (socket && remote && !skipUpdate) {
-      clearTimeout(emitTimeout);
-      emitTimeout = setTimeout(function(){
-        socket.emit('clientCommand', 'updateConfig', config);
-      }, timerExp);
-    }
-
     if (debug) {
       console.log('[TP]', 'Flip X Changed:', config.flipX);
     }
@@ -656,14 +588,9 @@ var TelePrompter = (function() {
   /**
    * Handle Flipping Text Vertically
    * @param {Object} evt
-   * @param {Boolean} skipUpdate
    */
-  function handleFlipY(evt, skipUpdate) {
+  function handleFlipY(evt) {
     timer.resetTimer();
-
-    if (socket && remote) {
-      socket.emit('clientCommand', 'updateTime', '00:00:00');
-    }
 
     // Remove Flip Classes
     $elm.teleprompter.removeClass('flip-y').removeClass('flip-xy');
@@ -700,13 +627,6 @@ var TelePrompter = (function() {
       });
     }
 
-    if (socket && remote && !skipUpdate) {
-      clearTimeout(emitTimeout);
-      emitTimeout = setTimeout(function(){
-        socket.emit('clientCommand', 'updateConfig', config);
-      }, timerExp);
-    }
-
     if (debug) {
       console.log('[TP]', 'Flip Y Changed:', config.flipY);
     }
@@ -730,13 +650,6 @@ var TelePrompter = (function() {
 
     $elm.teleprompter.css('color', config.textColor);
     localStorage.setItem('teleprompter_text_color', config.textColor);
-
-    if (socket && remote) {
-      clearTimeout(emitTimeout);
-      emitTimeout = setTimeout(function(){
-        socket.emit('clientCommand', 'updateConfig', config);
-      }, timerExp);
-    }
 
     if (debug) {
       console.log('[TP]', 'Text Color Changed:', config.textColor);
@@ -765,27 +678,6 @@ var TelePrompter = (function() {
   }
 
   /**
-   * Handle Remote Button Press
-   */
-  function handleRemote() {
-    if (!socket && !remote) {
-      var currentRemote = localStorage.getItem('teleprompter_remote_id');
-      remoteConnect(currentRemote);
-    } else {
-      $elm.modal.css('display', 'flex');
-      $elm.remoteControlModal.show();
-      $elm.softwareUpdate.hide();
-    }
-
-    $elm.buttonRemote.blur();
-    modalOpen = true;
-
-    if (debug) {
-      console.log('[TP]', 'Remote Button Pressed');
-    }
-  }
-
-  /**
    * Handle Reset Button Press
    */
   function handleReset() {
@@ -799,14 +691,6 @@ var TelePrompter = (function() {
     }, 100, 'linear', function() {
       $elm.article.clearQueue();
     });
-
-    if (socket && remote) {
-      socket.emit('clientCommand', 'updateTime', '00:00:00');
-      clearTimeout(emitTimeout);
-      emitTimeout = setTimeout(function(){
-        socket.emit('clientCommand', 'updateConfig', config);
-      }, timerExp);
-    }
 
     if (debug) {
       console.log('[TP]', 'Reset Button Pressed');
@@ -841,10 +725,6 @@ var TelePrompter = (function() {
 
     // Check if Escape Key and Modal Open
     if (evt.keyCode == escape && modalOpen) {
-      if ($elm.remoteControlModal.is(':visible')) {
-        $elm.buttonRemote.focus();
-      }
-
       $elm.modal.hide();
       modalOpen = false;
       evt.preventDefault();
@@ -907,6 +787,7 @@ var TelePrompter = (function() {
   function pageScroll() {
     var offset = 1;
     var animate = 0;
+    var scrollDelay;
 
     if (config.pageSpeed == 0) {
       $elm.article.stop().clearQueue();
@@ -965,241 +846,7 @@ var TelePrompter = (function() {
       var clientHeight = $elm.win.clientHeight;
 
       config.pageScrollPercent = Math.round(((scrollTop / (scrollHeight - clientHeight)) + Number.EPSILON) * 100);
-
-      if (socket && remote) {
-        clearTimeout(emitTimeout);
-        emitTimeout = setTimeout(function(){
-          socket.emit('clientCommand', 'updateConfig', config);
-        }, timerExp);
-      }
     }, animate);
-  }
-
-  /**
-   * Create Random String for Remote
-   * @returns string
-   */
-  function randomString() {
-    var chars = '3456789ABCDEFGHJKLMNPQRSTUVWXY';
-    var length = 6;
-    var string = '';
-
-    for (var i = 0; i < length; i++) {
-      var num = Math.floor(Math.random() * chars.length);
-      string += chars.substring(num, num + 1);
-    }
-
-    return string;
-  }
-
-  /**
-   * Connect to Remote
-   * @param {String} currentRemote Current Remote ID
-   */
-  function remoteConnect(currentRemote) {
-    if (typeof io === 'undefined') {
-      $elm.buttonRemote.removeClass('active');
-      localStorage.removeItem('teleprompter_remote_id');
-      return;
-    }
-
-    socket = (window.location.hostname === 'promptr.tv') ?
-      io.connect('https://promptr.tv', {
-        path: '/remote/socket.io'
-      }) :
-      io.connect('http://' + window.location.hostname + ':3000', {
-        path: '/socket.io'
-      });
-
-    remote = (currentRemote) ? currentRemote : randomString();
-
-    socket.on('connect', function() {
-      var $code = document.getElementById('qr-code');
-      $code.innerHTML = '';
-      socket.emit('connectToRemote', 'REMOTE_' + remote);
-
-      $elm.remoteURL.text((window.location.hostname === 'promptr.tv') ? 'https://promptr.tv/remote' : 'http://' + window.location.hostname + ':3000');
-
-      var url = (window.location.hostname === 'promptr.tv') ?
-        'https://promptr.tv/remote?id=' + remote :
-        'http://' + window.location.hostname + ':3000/?id=' + remote;
-
-      new QRCode($code, url);
-      $elm.remoteID.text(remote);
-
-      if (!currentRemote) {
-        $elm.modal.css('display', 'flex');
-      }
-
-      if (debug) {
-        console.log('[IO]', 'Socket Connected');
-      }
-
-      clearTimeout(timerGA);
-      timerGA = setTimeout(function(){
-        gaEvent('IO', 'Socket Connected');
-      }, timerExp);
-    });
-
-    socket.on('disconnect', function() {
-      $elm.buttonRemote.removeClass('active');
-      localStorage.removeItem('teleprompter_remote_id');
-
-      if (debug) {
-        console.log('[IO]', 'Socket Disconnected');
-      }
-
-      clearTimeout(timerGA);
-      timerGA = setTimeout(function(){
-        gaEvent('IO', 'Socket Disconnected');
-      }, timerExp);
-    });
-
-    socket.on('connectedToRemote', function() {
-      localStorage.setItem('teleprompter_remote_id', remote);
-      $elm.buttonRemote.addClass('active');
-
-      clearTimeout(emitTimeout);
-      emitTimeout = setTimeout(function(){
-        socket.emit('clientCommand', 'updateConfig', config);
-      }, timerExp);
-
-      if (debug) {
-        console.log('[IO]', 'Remote Connected:', remote);
-      }
-
-      clearTimeout(timerGA);
-      timerGA = setTimeout(function(){
-        gaEvent('IO', 'Remote Connected', remote);
-      }, timerExp);
-    });
-
-    socket.on('remoteControl', function(command, value) {
-      if (debug) {
-        console.log('[TP]', 'remoteControl', command, value);
-      }
-
-      clearTimeout(timerGA);
-      timerGA = setTimeout(function(){
-        gaEvent('IO', 'Remote Control', command);
-      }, timerExp);
-
-      switch (command) {
-        case 'reset':
-          handleReset();
-          break;
-
-        case 'power':
-          remoteDisconnect();
-          break;
-
-        case 'play':
-          $elm.buttonPlay.trigger('click');
-          break;
-
-        case 'hideModal':
-          $elm.modal.hide();
-          break;
-
-        case 'getConfig':
-          if (socket && remote) {
-            clearTimeout(emitTimeout);
-            emitTimeout = setTimeout(function(){
-              socket.emit('clientCommand', 'updateConfig', config);
-            }, timerExp);
-          }
-          break;
-
-        case 'updateConfig':
-          clearTimeout(emitTimeout);
-          remoteUpdate(config, value);
-          break;
-      }
-    });
-  }
-
-  /**
-   * Disconnect from Remote
-   */
-  function remoteDisconnect() {
-    if (socket && remote) {
-      socket.disconnect();
-      remote = null;
-    }
-
-    if (debug) {
-      console.log('[IO]', 'Remote Disconnected');
-    }
-
-    clearTimeout(timerGA);
-    timerGA = setTimeout(function(){
-      gaEvent('IO', 'Remote Disconnected');
-    }, timerExp);
-  }
-
-  /**
-   * Handle Updates from Remote
-   * @param {Object} oldConfig
-   * @param {Object} newConfig
-   */
-  function remoteUpdate(oldConfig, newConfig) {
-    if (debug) {
-      console.log('[IO]', 'Remote Update');
-      console.log('[IO]', 'Old Config:', oldConfig);
-      console.log('[IO]', 'New Config:', newConfig);
-    }
-
-    clearTimeout(timerGA);
-    timerGA = setTimeout(function(){
-      gaEvent('IO', 'Remote Update');
-    }, timerExp);
-
-    if (oldConfig.dimControls !== newConfig.dimControls) {
-      handleDim(null, true);
-    }
-
-    if (oldConfig.flipX !== newConfig.flipX) {
-      handleFlipX(null, true);
-    }
-
-    if (oldConfig.flipY !== newConfig.flipY) {
-      handleFlipY(null, true);
-    }
-
-    if (oldConfig.fontSize !== newConfig.fontSize) {
-      $elm.fontSize.slider('value', newConfig.fontSize);
-      updateFontSize(true, true);
-    }
-
-    if (oldConfig.pageSpeed !== newConfig.pageSpeed) {
-      $elm.speed.slider('value', newConfig.pageSpeed);
-      updateSpeed(true, true);
-    }
-
-    if (oldConfig.pageScrollPercent !== newConfig.pageScrollPercent) {
-      config.pageScrollPercent = newConfig.pageScrollPercent;
-
-      stopTeleprompter();
-
-      $elm.win = $elm.article[0];
-      var scrollHeight = $elm.win.scrollHeight;
-      var clientHeight = $elm.win.clientHeight;
-
-      var maxScrollStop = (scrollHeight - clientHeight);
-      var percent = parseInt(config.pageScrollPercent) / 100;
-      var newScrollTop = maxScrollStop * percent
-
-      $elm.article.stop().animate({
-        scrollTop: newScrollTop + 'px'
-      }, 0, 'linear', function() {
-        $elm.article.clearQueue();
-      });
-    }
-
-    // Update URL Params
-    clearTimeout(timerURL);
-    timerURL = setTimeout(updateURL, timerExp);
-    updateURL();
   }
 
   /**
@@ -1209,10 +856,6 @@ var TelePrompter = (function() {
     // Check if Already Playing
     if (isPlaying) {
       return;
-    }
-
-    if (socket && remote) {
-      socket.emit('clientCommand', 'play');
     }
 
     $elm.teleprompter.attr('contenteditable', false);
@@ -1249,11 +892,6 @@ var TelePrompter = (function() {
       return;
     }
 
-    if (socket && remote) {
-      socket.emit('clientCommand', 'stop');
-    }
-
-    clearTimeout(scrollDelay);
     $elm.teleprompter.attr('contenteditable', true);
 
     if (config.dimControls) {
@@ -1281,9 +919,8 @@ var TelePrompter = (function() {
   /**
    * Manage Font Size Change
    * @param {Boolean} save
-   * @param {Boolean} skipUpdate
    */
-  function updateFontSize(save, skipUpdate) {
+  function updateFontSize(save) {
     config.fontSize = $elm.fontSize.slider('value');
 
     $elm.teleprompter.css({
@@ -1301,13 +938,6 @@ var TelePrompter = (function() {
 
     if (save) {
       localStorage.setItem('teleprompter_font_size', config.fontSize);
-    }
-
-    if (socket && remote && !skipUpdate) {
-      clearTimeout(emitTimeout);
-      emitTimeout = setTimeout(function(){
-        socket.emit('clientCommand', 'updateConfig', config);
-      }, timerExp);
     }
 
     if (debug) {
@@ -1328,21 +958,13 @@ var TelePrompter = (function() {
   /**
    * Manage Speed Change
    * @param {Boolean} save
-   * @param {Boolean} skipUpdate
    */
-  function updateSpeed(save, skipUpdate) {
+  function updateSpeed(save) {
     config.pageSpeed = $elm.speed.slider('value');
     $('label.speed_label > span').text('(' + $elm.speed.slider('value') + ')');
 
     if (save) {
       localStorage.setItem('teleprompter_speed', $elm.speed.slider('value'));
-    }
-
-    if (socket && remote && !skipUpdate) {
-      clearTimeout(emitTimeout);
-      emitTimeout = setTimeout(function(){
-        socket.emit('clientCommand', 'updateConfig', config);
-      }, timerExp);
     }
 
     if (debug) {

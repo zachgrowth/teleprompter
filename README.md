@@ -13,7 +13,7 @@ If you or your company enjoy using this project, please consider supporting my w
 TelePrompter
 ===
 
-> Browser-based TelePrompter with Remote Control
+> Browser-based TelePrompter
 
 ![Screenshot](assets/img/social-card.png "Screenshot")
 
@@ -24,7 +24,6 @@ Features
 - [X] Changes Saved Automatically
 - [X] Handy Keyboard Shortcuts
 - [X] Advanced Controls
-- [X] Remote Control Support
 
 Free to Use
 ---
@@ -45,4 +44,4 @@ Key              | Alternatives                            | Description
 <kbd>SPACE</kbd> | <kbd>B</kbd> <kbd>F5</kbd> <kbd>.</kbd> | Start / Stop Teleprompter
 <kbd>ESC</kbd>   |                                         | Resets GUI
 
-We also made an effort to make sure your text will be easy to read.   So if you are pasting text from a word document, we'll do some cleaning up to make the breaks flow more easily.
+We also made an effort to make sure your text will be easy to read. So if you are pasting text from a word document, we'll do some cleaning up to make the breaks flow more easily.
