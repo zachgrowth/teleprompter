@@ -18,7 +18,7 @@ var TelePrompter = (function() {
     initialized = false,
     isPlaying = false,
     modalOpen = false,
-    scrollDelay,
+    scrollDelay = null,
     timeout,
     timer,
     timerExp = 10,
@@ -825,17 +825,26 @@ var TelePrompter = (function() {
    * Manage Scrolling Teleprompter
    */
   function pageScroll() {
+    // Check if we should still be scrolling
+    if (!isPlaying) {
+      return;
+    }
+
     var offset = 1;
     var animate = 0;
 
     if (config.pageSpeed == 0) {
       $elm.article.stop().clearQueue();
-      clearTimeout(scrollDelay);
+      if (scrollDelay) {
+        clearTimeout(scrollDelay);
+      }
       scrollDelay = setTimeout(pageScroll, 500);
       return;
     }
 
-    clearTimeout(scrollDelay);
+    if (scrollDelay) {
+      clearTimeout(scrollDelay);
+    }
     scrollDelay = setTimeout(pageScroll, Math.floor(50 - config.pageSpeed));
 
     if ($elm.teleprompter.hasClass('flip-y')) {
@@ -908,9 +917,8 @@ var TelePrompter = (function() {
 
     timer.startTimer();
 
-    pageScroll();
-
     isPlaying = true;
+    pageScroll();
 
     if (debug) {
       console.log('[TP]', 'Starting TelePrompter');
@@ -931,8 +939,14 @@ var TelePrompter = (function() {
       return;
     }
 
+    // Set playing to false first to stop pageScroll
+    isPlaying = false;
+
     // Clear scroll timeout
-    clearTimeout(scrollDelay);
+    if (scrollDelay) {
+      clearTimeout(scrollDelay);
+      scrollDelay = null;
+    }
     
     $elm.teleprompter.attr('contenteditable', true);
 
@@ -945,8 +959,6 @@ var TelePrompter = (function() {
     $elm.body.removeClass('playing');
 
     timer.stopTimer();
-
-    isPlaying = false;
 
     if (debug) {
       console.log('[TP]', 'Stopping TelePrompter');
