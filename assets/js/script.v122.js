@@ -18,6 +18,7 @@ var TelePrompter = (function() {
     initialized = false,
     isPlaying = false,
     modalOpen = false,
+    scrollDelay,
     timeout,
     timer,
     timerExp = 10,
@@ -280,13 +281,52 @@ var TelePrompter = (function() {
    * Initialize UI
    */
   function initUI() {
-    // Create Timer
-    timer = $('.clock').timer({
-      stopVal: 10000,
-      onChange: function(time) {
-        // Timer functionality without remote
+    // Create Timer - Simple timer implementation
+    timer = {
+      startTime: null,
+      elapsedTime: 0,
+      interval: null,
+      
+      startTimer: function() {
+        this.startTime = Date.now() - this.elapsedTime;
+        this.interval = setInterval(function() {
+          timer.updateDisplay();
+        }, 1000);
+      },
+      
+      stopTimer: function() {
+        if (this.interval) {
+          clearInterval(this.interval);
+          this.interval = null;
+        }
+      },
+      
+      resetTimer: function() {
+        this.stopTimer();
+        this.elapsedTime = 0;
+        this.updateDisplay();
+      },
+      
+      updateDisplay: function() {
+        if (this.startTime) {
+          this.elapsedTime = Date.now() - this.startTime;
+        }
+        var totalSeconds = Math.floor(this.elapsedTime / 1000);
+        var hours = Math.floor(totalSeconds / 3600);
+        var minutes = Math.floor((totalSeconds % 3600) / 60);
+        var seconds = totalSeconds % 60;
+        
+        var timeString = 
+          (hours < 10 ? '0' : '') + hours + ':' +
+          (minutes < 10 ? '0' : '') + minutes + ':' +
+          (seconds < 10 ? '0' : '') + seconds;
+        
+        $('.clock').text(timeString);
       }
-    });
+    };
+
+    // Initialize timer display
+    timer.updateDisplay();
 
     // Update Flip text if Present
     if (config.flipX && config.flipY) {
@@ -787,7 +827,6 @@ var TelePrompter = (function() {
   function pageScroll() {
     var offset = 1;
     var animate = 0;
-    var scrollDelay;
 
     if (config.pageSpeed == 0) {
       $elm.article.stop().clearQueue();
@@ -892,6 +931,9 @@ var TelePrompter = (function() {
       return;
     }
 
+    // Clear scroll timeout
+    clearTimeout(scrollDelay);
+    
     $elm.teleprompter.attr('contenteditable', true);
 
     if (config.dimControls) {
