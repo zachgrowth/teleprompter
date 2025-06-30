@@ -243,6 +243,12 @@
    * @param {String} remote Remote ID
    */
   function clientConnect(remote) {
+    // Check if Socket.IO is available
+    if (typeof io === 'undefined') {
+      console.warn('Socket.IO library is not loaded. Cannot connect to remote.');
+      return;
+    }
+
     socket = (window.location.hostname === 'promptr.tv')
       ? io.connect('https://promptr.tv', { path: '/remote/socket.io' })
       : io.connect('http://' + window.location.hostname + ':3000', { path: '/socket.io' });
